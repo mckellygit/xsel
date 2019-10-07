@@ -83,6 +83,14 @@ static Bool no_daemon = False;
 /* logfile: name of file to log error messages to when detached */
 static char logfile[MAXFNAME];
 
+// mck ------------------------
+// spacechk file
+static char spacechk_file[MAXFNAME];
+static Bool chk_space = 0;
+// rmlastnl
+static Bool rm_lastnl = 0;
+// mck ------------------------
+
 /* fstat() on stdin and stdout */
 static struct stat in_statbuf, out_statbuf;
 
@@ -880,6 +888,10 @@ read_input (unsigned char * read_buffer, Bool do_select)
   ssize_t n;
   fd_set fds;
   struct timeval select_timeout;
+// mck ------------------------
+  int spacefd, spacerd;
+  Bool add_space = True;
+// mck ------------------------
 
   do {
 
@@ -906,6 +918,7 @@ try_read:
     if (current_alloc == total_input) {
       if ((d = (current_alloc % insize)) != 0) current_alloc += (insize-d);
       current_alloc *= 2;
+      current_alloc += 2; // mck
       new_buffer = realloc (read_buffer, current_alloc);
       if (new_buffer == NULL) {
         exit_err ("realloc error");
@@ -931,6 +944,36 @@ try_read:
   } while (n != 0 && !fatal);
 
   read_buffer[total_input] = '\0';
+
+  // mck ------------------------
+  if (chk_space) {
+    spacefd = open(spacechk_file, O_RDONLY);
+    if (spacefd >= 0) {
+      char spaceval = '1';
+      spacerd = read(spacefd, &spaceval, 1);
+      if ( (spacerd == 1) && (spaceval == '0') )
+        add_space = False;
+      close(spacefd);
+    }
+    print_debug (D_TRACE, "check space, add_space = %d", add_space);
+  }
+
+  if (total_input) {
+    if (rm_lastnl) {
+      if (read_buffer[total_input-1] == '\n') {
+        read_buffer[total_input-1] = '\0';
+        total_input--;
+      }
+    }
+    if (chk_space && add_space) {
+      if (read_buffer[total_input-1] != ' ') {
+        read_buffer[total_input] = ' ';
+        total_input++;
+        read_buffer[total_input] = '\0';
+      }
+    }
+  }
+  // mck ------------------------
 
   if(do_zeroflush && total_input > 0) {
     int i;
@@ -970,6 +1013,7 @@ initialise_read (unsigned char * read_buffer)
     current_alloc += insize;
   }
 
+  current_alloc += 2; // mck
   if ((new_buffer = realloc (read_buffer, current_alloc)) == NULL) {
     exit_err ("realloc error");
   }
@@ -2073,6 +2117,14 @@ main(int argc, char *argv[])
       show_version = True;
     } else if (OPT("--verbose") || OPT("-v")) {
       debug_level++;
+    // mck ------------------------
+    } else if (OPT("--sc")) {
+      i++; if (i >= argc) goto usage_err;
+      _xs_strncpy (spacechk_file, argv[i], MAXFNAME);
+      chk_space = True;
+    } else if (OPT("--rmlastnl")) {
+      rm_lastnl = True;
+    // mck ------------------------
     } else if (OPT("--append") || OPT("-a")) {
       force_input = True;
       do_output = False;

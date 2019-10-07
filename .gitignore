@@ -1,0 +1,7 @@
+INSTALL
+Makefile.in
+autom4te.cache
+compile
+configure
+depcomp
+ltmain.sh
