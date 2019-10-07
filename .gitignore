@@ -5,3 +5,12 @@ compile
 configure
 depcomp
 ltmain.sh
+.deps
+Makefile
+config.h
+config.log
+config.status
+note
+stamp-h1
+xsel
+xsel.o
