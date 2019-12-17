@@ -960,7 +960,7 @@ try_read:
 
   if (total_input) {
     if (rm_lastnl) {
-      while( (total_input > 0) && ( (read_buffer[total_input-1] == '\n') || (read_buffer[total_input-1] == '\r') ) ) {
+      while ( (total_input > 0) && ( (read_buffer[total_input-1] == '\n') || (read_buffer[total_input-1] == '\r') ) ) {
         read_buffer[total_input-1] = '\0';
         total_input--;
       }
