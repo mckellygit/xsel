@@ -906,7 +906,7 @@ read_input (unsigned char * read_buffer, Bool do_select)
   fd_set fds;
   struct timeval select_timeout;
 // mck ------------------------
-  int spacefd, spacerd;
+  int spacefd, spacerd, rm_nl;
   Bool add_space = True;
 // mck ------------------------
 
@@ -975,11 +975,21 @@ try_read:
     print_debug (D_TRACE, "check space, add_space = %d", add_space);
   }
 
+  rm_nl = 0;
   if (total_input) {
     if (rm_lastnl) {
       while ( (total_input > 0) && ( (read_buffer[total_input-1] == '\n') || (read_buffer[total_input-1] == '\r') ) ) {
         read_buffer[total_input-1] = '\0';
         total_input--;
+        rm_nl++;
+      }
+      // if rmlastl and we did remove a newline, then add one trailing space ...
+      if (total_input && rm_nl) {
+        if (read_buffer[total_input-1] != ' ') {
+          read_buffer[total_input] = ' ';
+          total_input++;
+          read_buffer[total_input] = '\0';
+        }
       }
     }
   }
