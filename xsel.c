@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <semaphore.h>
 #include <sys/time.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -34,6 +35,7 @@
 
 #include "xsel.h"
 
+sem_t *sem = NULL;
 
 /* The name we were invoked as (argv[0]) */
 static char * progname;
@@ -458,6 +460,8 @@ become_daemon (void)
   pid_t pid;
   int null_r_fd, null_w_fd, log_fd;
   char * cachedir;
+  char sem_name[256];
+  struct timespec tspec;
 
   if (no_daemon) {
 	  /* If the user has specified a timeout, enforce it even if we don't
@@ -465,6 +469,18 @@ become_daemon (void)
 	  set_daemon_timeout ();
 	  return;
   }
+
+  sprintf(sem_name, "xsel-sem-%d", getpid());
+  sem = sem_open(sem_name, O_CREAT, 0600, 0);
+  if (sem == SEM_FAILED)
+  {
+      int errnum = errno;
+      exit_err ("error creating named semaphore, errno: %d ", errnum);
+  }
+  sem_unlink(sem_name);
+
+  tspec.tv_sec = 0;
+  tspec.tv_nsec = 500000000;
 
   cachedir = get_xdg_cache_home();
 
@@ -486,6 +502,7 @@ become_daemon (void)
   if ((pid = fork()) == -1) {
     exit_err ("error forking");
   } else if (pid > 0) {
+    sem_timedwait(sem, &tspec);
     _exit (0);
   }
 
@@ -1797,6 +1814,7 @@ set_selection (Atom selection, unsigned char * sel)
         sel = read_input (sel, True);
       
       if (!handle_selection_request (event, sel)) return;
+      sem_post(sem);
       
       break;
     case PropertyNotify:
