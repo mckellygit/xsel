@@ -964,16 +964,22 @@ try_read:
 
   // mck ------------------------
   if (chk_space) {
-    spacefd = open(spacechk_file, O_RDONLY);
-    if (spacefd >= 0) {
-      char spaceval = '1';
-      spacerd = read(spacefd, &spaceval, 1);
-      if ( (spacerd == 1) && (spaceval == '0') )
-        add_space = False;
-      close(spacefd);
+    if (strcmp(spacechk_file, "no") == 0)
+      add_space = False;
+    else
+    {
+      spacefd = open(spacechk_file, O_RDONLY);
+      if (spacefd >= 0) {
+        char spaceval = '1';
+        spacerd = read(spacefd, &spaceval, 1);
+        if ( (spacerd == 1) && (spaceval == '0') )
+          add_space = False;
+        close(spacefd);
+      }
     }
     print_debug (D_TRACE, "check space, add_space = %d", add_space);
   }
+  // fprintf(stderr,"add_space = %u total_input = %u\n", add_space, total_input);
 
   rm_nl = 0;
   if (total_input) {
@@ -983,7 +989,8 @@ try_read:
         total_input--;
         rm_nl++;
       }
-      // if rmlastl and we did remove a newline, then add one trailing space ...
+#if 0
+      // if rmlastnl and we did remove a newline, then add one final trailing space back in ...
       if (total_input && rm_nl) {
         if (read_buffer[total_input-1] != ' ') {
           read_buffer[total_input] = ' ';
@@ -991,6 +998,7 @@ try_read:
           read_buffer[total_input] = '\0';
         }
       }
+#endif
     }
   }
   if (total_input) {
@@ -1002,6 +1010,7 @@ try_read:
       }
     }
   }
+  // fprintf(stderr,"read_buffer = <%s>\n", read_buffer);
   // mck ------------------------
 
   if(do_zeroflush && total_input > 0) {
