@@ -966,6 +966,10 @@ try_read:
   if (chk_space) {
     if (strcmp(spacechk_file, "no") == 0)
       add_space = False;
+    else if (strcmp(spacechk_file, "off") == 0)
+      add_space = False;
+    else if (strcmp(spacechk_file, "0") == 0)
+      add_space = False;
     else
     {
       spacefd = open(spacechk_file, O_RDONLY);
