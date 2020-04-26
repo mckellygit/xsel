@@ -905,10 +905,6 @@ read_input (unsigned char * read_buffer, Bool do_select)
   ssize_t n;
   fd_set fds;
   struct timeval select_timeout;
-// mck ------------------------
-  int spacefd, spacerd, rm_nl;
-  Bool add_space = True;
-// mck ------------------------
 
   do {
 
@@ -961,61 +957,6 @@ try_read:
   } while (n != 0 && !fatal);
 
   read_buffer[total_input] = '\0';
-
-  // mck ------------------------
-  if (chk_space) {
-    if (strcmp(spacechk_file, "no") == 0)
-      add_space = False;
-    else if (strcmp(spacechk_file, "off") == 0)
-      add_space = False;
-    else if (strcmp(spacechk_file, "0") == 0)
-      add_space = False;
-    else
-    {
-      spacefd = open(spacechk_file, O_RDONLY);
-      if (spacefd >= 0) {
-        char spaceval = '1';
-        spacerd = read(spacefd, &spaceval, 1);
-        if ( (spacerd == 1) && (spaceval == '0') )
-          add_space = False;
-        close(spacefd);
-      }
-    }
-    print_debug (D_TRACE, "check space, add_space = %d", add_space);
-  }
-  // fprintf(stderr,"add_space = %u total_input = %u\n", add_space, total_input);
-
-  rm_nl = 0;
-  if (total_input) {
-    if (rm_lastnl) {
-      while ( (total_input > 0) && ( (read_buffer[total_input-1] == '\n') || (read_buffer[total_input-1] == '\r') ) ) {
-        read_buffer[total_input-1] = '\0';
-        total_input--;
-        rm_nl++;
-      }
-#if 0
-      // if rmlastnl and we did remove a newline, then add one final trailing space back in ...
-      if (total_input && rm_nl) {
-        if (read_buffer[total_input-1] != ' ') {
-          read_buffer[total_input] = ' ';
-          total_input++;
-          read_buffer[total_input] = '\0';
-        }
-      }
-#endif
-    }
-  }
-  if (total_input) {
-    if (chk_space && add_space) {
-      if (read_buffer[total_input-1] != ' ') {
-        read_buffer[total_input] = ' ';
-        total_input++;
-        read_buffer[total_input] = '\0';
-      }
-    }
-  }
-  // fprintf(stderr,"read_buffer = <%s>\n", read_buffer);
-  // mck ------------------------
 
   if(do_zeroflush && total_input > 0) {
     int i;
@@ -2369,16 +2310,78 @@ main(int argc, char *argv[])
   if (do_output || force_output) {
     /* Get the current selection */
     old_sel = get_selection_text (selection);
-    if (old_sel)
-      {
-         printf ("%s", old_sel);
-         if (!do_append && *old_sel != '\0' && isatty(1) &&
-             old_sel[xs_strlen (old_sel) - 1] != '\n')
-           {
-             fflush (stdout);
-             fprintf (stderr, "\n\\ No newline at end of selection\n");
-           }
+    if (old_sel) {
+
+      // mck ------------------------
+      int spacefd, spacerd, rm_nl;
+      Bool add_space = True;
+      unsigned int old_sel_len = 0;
+
+      if (chk_space) {
+        if (strcmp(spacechk_file, "no") == 0)
+          add_space = False;
+        else if (strcmp(spacechk_file, "off") == 0)
+          add_space = False;
+        else if (strcmp(spacechk_file, "0") == 0)
+          add_space = False;
+        else {
+          spacefd = open(spacechk_file, O_RDONLY);
+          if (spacefd >= 0) {
+            char spaceval = '1';
+            spacerd = read(spacefd, &spaceval, 1);
+            if ( (spacerd == 1) && (spaceval == '0') )
+              add_space = False;
+            close(spacefd);
+          }
+        }
+        print_debug (D_TRACE, "check space, add_space = %d", add_space);
       }
+
+      old_sel_len = xs_strlen (old_sel);
+
+      // fprintf(stderr,"add_space = %u old_sel_len = %u\n", add_space, old_sel_len);
+
+      rm_nl = 0;
+      if (old_sel_len) {
+        if (rm_lastnl) {
+          while ( (old_sel_len > 0) && ( (old_sel[old_sel_len-1] == '\n') || (old_sel[old_sel_len-1] == '\r') ) ) {
+            old_sel[old_sel_len-1] = '\0';
+            old_sel_len--;
+            rm_nl++;
+          }
+#if 0
+          // if rmlastnl and we did remove a newline, then add one final trailing space back in ...
+          if (old_sel_len && rm_nl) {
+            if (old_sel[old_sel_len-1] != ' ') {
+              old_sel[old_sel_len] = ' ';
+              old_sel_len++;
+              old_sel[old_sel_len] = '\0';
+            }
+          }
+#endif
+        }
+      }
+      if (old_sel_len) {
+        if (chk_space && add_space) {
+          if (old_sel[old_sel_len-1] != ' ') {
+            old_sel[old_sel_len] = ' ';
+            old_sel_len++;
+            old_sel[old_sel_len] = '\0';
+          }
+        }
+      }
+      // fprintf(stderr,"old_sel = <%s>\n", old_sel);
+      // mck ------------------------
+
+      printf ("%s", old_sel);
+      fflush (stdout);
+
+      if (!do_append && *old_sel != '\0' && isatty(1) &&
+          old_sel[xs_strlen (old_sel) - 1] != '\n')
+      {
+        fprintf (stderr, "\n\\ No newline at end of selection\n");
+      }
+    }
   }
 
   /* handle input and clear modes */
